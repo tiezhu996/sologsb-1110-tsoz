@@ -60,6 +60,13 @@ export function formatDate(value: Date | string): string {
   return `${y}-${m}-${day}`;
 }
 
+export function formatDateTime(value: Date | string): string {
+  const d = typeof value === 'string' ? new Date(value) : value;
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${formatDate(d)} ${hh}:${mm}`;
+}
+
 export function todayStr(): string {
   return formatDate(new Date());
 }

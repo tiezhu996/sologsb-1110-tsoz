@@ -25,7 +25,7 @@ docker compose down
 | 构建 | Vite 6（`npm run build` 含 `vue-tsc --noEmit` 类型检查） |
 | UI | Element Plus 2 |
 | 路由 | Vue Router 4（5 条业务路由 + 404） |
-| 状态 | Pinia（boardStore / chamberStore / lacquerStore / stringingStore） |
+| 状态 | Pinia（boardStore / chamberStore / lacquerStore / stringingStore / archiveStore） |
 | 存储 | IndexedDB（Dexie，库名 `gbguqin-db`） |
 | 托管 | nginx:alpine（多阶段构建，SPA try_files + gzip） |
 
@@ -49,20 +49,20 @@ npm run build    # 类型检查 + 生产构建
 │   ├── nginx.conf             # try_files SPA 回退 + gzip
 │   ├── public/favicon.svg
 │   └── src/
-│       ├── types/             # wood-board / sound-chamber / lacquer-layer / stringing（+ ui.ts）
-│       ├── stores/            # boardStore / chamberStore / lacquerStore / stringingStore
+│       ├── types/             # wood-board / sound-chamber / lacquer-layer / stringing / archive（+ ui.ts）
+│       ├── stores/            # boardStore / chamberStore / lacquerStore / stringingStore / archiveStore
 │       ├── components/common/ # DimensionChart / LayerStack / ToneTextEditor / FilterBar / StatBadge / ProcessTimeline / EmptyPanel
 │       ├── hooks/             # useGuqinFilter / useStageProgress
 │       ├── pages/             # WorkshopBoard / BoardList / ChamberEditor / LacquerLedger / StringingLog（+ NotFound）
 │       ├── router/index.ts    # 路由表
-│       └── utils/             # layer.ts / db.ts / export.ts（+ wood.ts / seed.ts / id.ts）
+│       └── utils/             # layer.ts / archive.ts / db.ts / export.ts（+ wood.ts / seed.ts / id.ts）
 ```
 
 ## 功能与路由
 
 | 路由 | 页面 | 说明 |
 | --- | --- | --- |
-| `/` | 琴坯进度 | 选材/掏膛/灰胎/上弦四阶段统计、推进比、缺失项与工序动态 |
+| `/` | 琴坯进度 | 选材/掏膛/灰胎/上弦四阶段统计、推进比、缺失项与工序动态；四道工序齐备后归档成琴，生成冻结快照的验收档 |
 | `/boards` | 板材登记与配对 | 面板底板配对、含水率回显、厚度差、槽腹剖面标注 |
 | `/chambers` | 槽腹尺寸记录 | 纳音/龙池/凤沼三处厚度、槽腹深度、天地柱与龙池凤沼尺寸，SVG 剖面标注 |
 | `/lacquer` | 灰胎髹漆遍次 | 按遍次累加厚度、荫房温湿度窗口校验、层积条与养护天数 |
@@ -70,7 +70,14 @@ npm run build    # 类型检查 + 生产构建
 
 ## 数据存储说明
 
-- 全部数据存于浏览器 IndexedDB（Dexie，库名 `gbguqin-db`），表：`boards`、`chambers`、`lacquers`、`stringings`、`meta`。
-- `db.version(1)` 建表声明索引；`db.version(2).upgrade(...)` 为髹漆表增加 `[guqinNo+seq]` 复合索引并回填历史厚度。升级前可用顶栏「导出备份」导出全量 JSON。
+- 全部数据存于浏览器 IndexedDB（Dexie，库名 `gbguqin-db`），表：`boards`、`chambers`、`lacquers`、`stringings`、`archives`、`meta`。
+- `db.version(1)` 建表声明索引；`db.version(2).upgrade(...)` 为髹漆表增加 `[guqinNo+seq]` 复合索引并回填历史厚度；`db.version(3)` 新增 `archives` 成琴验收档表。升级前可用顶栏「导出备份」导出全量 JSON。
 - 首次打开且表为空时写入一批示例工序档案（`src/utils/seed.ts`）。
 - 容器无状态：不使用数据库服务、不挂载命名卷，`docker compose down` 后数据仍留在浏览器中。
+
+## 成琴归档（验收档）
+
+- 进度页「琴坯阶段明细」中，四道工序（选材配对 / 槽腹 / 灰胎达标 / 上弦）齐备的琴可点「归档成琴」；缺项会在「缺失项」列标出，且归档按钮被禁用挡住。
+- 归档把**当次**四类记录连同成琴日期、验琴人冻结为**快照**存入 `archives` 表——刻意不用四表实时拼接，否则旧验收会跟着之后的工序修改变。
+- 归档后再改任一工序记录，旧档保留并自动标为「已变更」（快照指纹与四表当前指纹比对得出）；「重新归档」生成版本号 +1 的新快照，旧版本仍可查看。
+- 验收档随顶栏「导出备份」一起导出，刷新重开后状态仍在。

@@ -4,8 +4,11 @@ import { useChamberStore } from '../stores/chamberStore';
 import { useLacquerStore } from '../stores/lacquerStore';
 import { useStringingStore } from '../stores/stringingStore';
 import { cumulativeThickness } from '../utils/layer';
+import { STAGE_TARGET_MM } from '../utils/archive';
+import { STAGE_LABELS, type StageKey } from '../types/ui';
 
-export type StageKey = 'select' | 'carve' | 'lacquer' | 'string';
+export type { StageKey };
+export { STAGE_LABELS };
 
 export interface StageItem {
   key: StageKey;
@@ -24,16 +27,6 @@ export interface StageProgress {
   missing: string[];
   cumulativeMm: number;
 }
-
-export const STAGE_LABELS: Record<StageKey, string> = {
-  select: '选材',
-  carve: '掏膛',
-  lacquer: '灰胎',
-  string: '上弦',
-};
-
-/** 灰胎完工目标累计厚度（mm） */
-const TARGET_MM = 1.0;
 
 /**
  * 按选材/掏膛/灰胎/上弦计算每张琴的阶段推进比与缺失项。
@@ -81,8 +74,8 @@ export function useStageProgress() {
         {
           key: 'lacquer',
           label: STAGE_LABELS.lacquer,
-          done: total >= TARGET_MM,
-          detail: layers.length ? `${layers.length} 遍，累计 ${total.toFixed(2)}mm / 目标 ${TARGET_MM}mm` : '尚未髹漆',
+          done: total >= STAGE_TARGET_MM,
+          detail: layers.length ? `${layers.length} 遍，累计 ${total.toFixed(2)}mm / 目标 ${STAGE_TARGET_MM}mm` : '尚未髹漆',
         },
         {
           key: 'string',
