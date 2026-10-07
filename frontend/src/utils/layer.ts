@@ -52,6 +52,9 @@ export function layersToTarget(layers: LacquerLayer[], targetMm: number): number
 /** 髹漆工艺目标累计厚度（mm），成琴灰胎常见区间 */
 export const TARGET_TOTAL_MM = 1.2;
 
+/** 进度页「灰胎完成」判定线（mm）：累计厚度达到即视为灰胎工序完成，成琴归档校验同用 */
+export const STAGE_DONE_TARGET_MM = 1.0;
+
 export function formatDate(value: Date | string): string {
   const d = typeof value === 'string' ? new Date(value) : value;
   const y = d.getFullYear();

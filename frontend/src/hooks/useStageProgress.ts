@@ -3,7 +3,7 @@ import { useBoardStore } from '../stores/boardStore';
 import { useChamberStore } from '../stores/chamberStore';
 import { useLacquerStore } from '../stores/lacquerStore';
 import { useStringingStore } from '../stores/stringingStore';
-import { cumulativeThickness } from '../utils/layer';
+import { cumulativeThickness, STAGE_DONE_TARGET_MM } from '../utils/layer';
 
 export type StageKey = 'select' | 'carve' | 'lacquer' | 'string';
 
@@ -32,8 +32,8 @@ export const STAGE_LABELS: Record<StageKey, string> = {
   string: '上弦',
 };
 
-/** 灰胎完工目标累计厚度（mm） */
-const TARGET_MM = 1.0;
+/** 灰胎完工目标累计厚度（mm），与归档校验共用 utils/layer 的判定线 */
+const TARGET_MM = STAGE_DONE_TARGET_MM;
 
 /**
  * 按选材/掏膛/灰胎/上弦计算每张琴的阶段推进比与缺失项。

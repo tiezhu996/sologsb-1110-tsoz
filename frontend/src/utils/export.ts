@@ -8,15 +8,18 @@ export interface BackupPayload {
   chambers: unknown[];
   lacquers: unknown[];
   stringings: unknown[];
+  /** 成琴归档（v3 起）；旧备份可能缺此字段 */
+  archives?: unknown[];
 }
 
 /** 汇总全部本地表为 JSON 备份（schema 迁移前先导出） */
 export async function buildBackup(): Promise<BackupPayload> {
-  const [boards, chambers, lacquers, stringings] = await Promise.all([
+  const [boards, chambers, lacquers, stringings, archives] = await Promise.all([
     db.boards.toArray(),
     db.chambers.toArray(),
     db.lacquers.toArray(),
     db.stringings.toArray(),
+    db.archives.toArray(),
   ]);
   return {
     app: 'gbguqin',
@@ -26,6 +29,7 @@ export async function buildBackup(): Promise<BackupPayload> {
     chambers,
     lacquers,
     stringings,
+    archives,
   };
 }
 
@@ -58,8 +62,10 @@ export function downloadCsv<T extends Record<string, unknown>>(
   downloadText(filename, `\ufeff${header}\n${body}`, 'text/csv');
 }
 
-/** 恢复 JSON 备份 */
-export async function importBackup(text: string): Promise<{ boards: number; chambers: number; lacquers: number; stringings: number }> {
+/** 恢复 JSON 备份；旧备份无 archives 字段时保留本地归档不动 */
+export async function importBackup(
+  text: string,
+): Promise<{ boards: number; chambers: number; lacquers: number; stringings: number; archives: number }> {
   const payload = JSON.parse(text) as Partial<BackupPayload>;
   if (!payload || payload.app !== 'gbguqin') {
     throw new Error('备份文件格式不匹配（缺少 app=gbguqin 标记）');
@@ -69,13 +75,18 @@ export async function importBackup(text: string): Promise<{ boards: number; cham
     chambers: payload.chambers?.length ?? 0,
     lacquers: payload.lacquers?.length ?? 0,
     stringings: payload.stringings?.length ?? 0,
+    archives: payload.archives?.length ?? 0,
   };
-  await db.transaction('rw', db.boards, db.chambers, db.lacquers, db.stringings, async () => {
+  await db.transaction('rw', db.boards, db.chambers, db.lacquers, db.stringings, db.archives, async () => {
     await Promise.all([db.boards.clear(), db.chambers.clear(), db.lacquers.clear(), db.stringings.clear()]);
     if (payload.boards?.length) await db.boards.bulkPut(payload.boards as never[]);
     if (payload.chambers?.length) await db.chambers.bulkPut(payload.chambers as never[]);
     if (payload.lacquers?.length) await db.lacquers.bulkPut(payload.lacquers as never[]);
     if (payload.stringings?.length) await db.stringings.bulkPut(payload.stringings as never[]);
+    if (payload.archives !== undefined) {
+      await db.archives.clear();
+      if (payload.archives.length) await db.archives.bulkPut(payload.archives as never[]);
+    }
   });
   return counts;
 }
